@@ -1,0 +1,191 @@
+import re
+import pandas as pd
+from unidecode import unidecode
+
+# -----------------------------
+# CONFIG
+# -----------------------------
+
+ID_COLS = {"ID", "NROIDENTI", "NROIDENTI_1", "NROIDENTI.1"}
+META_COLS = {"FECHA", "OBSERVACION", "OBSERVACIÓN", "NOMBRE"}
+
+TEST_COLS = [
+    "V", "E", "A", "CON", "R", "N", "M", "O",
+    "TOTAL_CAPACIDAD",
+    "INTELIGENCIA_FLUIDA",
+    "INTELIGENCIA_CRISTALIZADA",
+    "MOTIVACION_SUPERFICIAL",
+    "MOTIVACION_PROFUNDA",
+    "MOTIVACION_DE_RENDIMIENTO",
+    "P._TOTAL_PROCRASTINACION",
+    "ANSIEDAD_A_LA_EVALUACION",
+]
+
+RANGES = {
+    "V": (0, 100), "E": (0, 100), "A": (0, 100),
+    "CON": (0, 100), "R": (0, 100),
+    "N": (0, 100), "M": (0, 100), "O": (0, 100),
+    "TOTAL_CAPACIDAD": (-200, 200),
+    "INTELIGENCIA_FLUIDA": (0, 200),
+    "INTELIGENCIA_CRISTALIZADA": (0, 200),
+    "MOTIVACION_SUPERFICIAL": (0, 100),
+    "MOTIVACION_PROFUNDA": (0, 100),
+    "MOTIVACION_DE_RENDIMIENTO": (0, 100),
+    "P._TOTAL_PROCRASTINACION": (0, 100),
+    "ANSIEDAD_A_LA_EVALUACION": (0, 100),
+}
+
+# -----------------------------
+# LIMPIEZA
+# -----------------------------
+
+def normalize_columns(df):
+    def clean_col(col):
+        col = str(col).strip().replace("\n", " ")
+        col = unidecode(col)
+        col = re.sub(r"\s+", " ", col)
+        col = col.replace(" ", "_").upper()
+        return col
+
+    df = df.copy()
+    df.columns = [clean_col(c) for c in df.columns]
+
+    # dedupe columnas
+    seen = {}
+    new_cols = []
+    for c in df.columns:
+        if c not in seen:
+            seen[c] = 0
+            new_cols.append(c)
+        else:
+            seen[c] += 1
+            new_cols.append(f"{c}__{seen[c]}")
+    df.columns = new_cols
+
+    return df
+
+
+# -----------------------------
+# LECTURA ROBUSTA
+# -----------------------------
+
+def read_file(path, sheet_name=None):
+    if path.endswith(".xlsx"):
+
+        xls = pd.ExcelFile(path, engine="openpyxl")
+        available_sheets = xls.sheet_names
+
+        print(f"[INFO] Hojas disponibles: {available_sheets}")
+
+        if sheet_name is None:
+            sheet_name = available_sheets[0]
+            print(f"[INFO] Usando hoja por defecto: {sheet_name}")
+
+        if sheet_name not in available_sheets:
+            print(f"[WARN] La hoja '{sheet_name}' no existe.")
+            sheet_name = available_sheets[0]
+            print(f"[INFO] Usando hoja alternativa: {sheet_name}")
+
+        df = pd.read_excel(
+            path,
+            sheet_name=sheet_name,
+            engine="openpyxl",
+            dtype=object
+        )
+
+    elif path.endswith(".csv"):
+        df = pd.read_csv(path, dtype=object)
+
+    else:
+        raise ValueError("Formato no soportado.")
+
+    df = normalize_columns(df)
+
+    # IDs siempre texto
+    for col in df.columns:
+        if col in ID_COLS or col.startswith("ID"):
+            df[col] = df[col].astype(str).str.strip()
+
+    # Convertir SOLO variables del test
+    for col in TEST_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
+
+
+# -----------------------------
+# FILTRO DE VALIDEZ
+# -----------------------------
+
+def filter_valid_rows(df):
+    df = df.copy()
+
+    present = df[TEST_COLS].notna().sum(axis=1)
+    df = df[present >= 5]
+
+    mask = pd.Series(True, index=df.index)
+    for col, (lo, hi) in RANGES.items():
+        if col in df.columns:
+            mask &= (df[col].isna()) | ((df[col] >= lo) & (df[col] <= hi))
+
+    df = df[mask]
+    return df
+
+
+# -----------------------------
+# ESTADÍSTICA
+# -----------------------------
+
+def central_general(df):
+    out = pd.DataFrame({
+        "MEDIA": df[TEST_COLS].mean(),
+        "MEDIANA": df[TEST_COLS].median(),
+        "N": df[TEST_COLS].count()
+    })
+    out.index.name = "VARIABLE"
+    return out.reset_index()
+
+
+def central_por_programa(df):
+    rows = []
+    grouped = df.groupby("PROGRAMA")
+
+    for programa, subdf in grouped:
+        for var in TEST_COLS:
+            rows.append({
+                "PROGRAMA": programa,
+                "VARIABLE": var,
+                "MEDIA": subdf[var].mean(),
+                "MEDIANA": subdf[var].median(),
+                "N": subdf[var].count()
+            })
+
+    return pd.DataFrame(rows)
+
+
+# -----------------------------
+# MAIN
+# -----------------------------
+
+def main():
+    file_path = "/media/aexeax/NARNIA/DOCS/semillero inv/PRUEBAS [(2026-01)].xlsx"
+
+    # Ya NO forzamos nombre de hoja
+    df = read_file(file_path)
+
+    df_valid = filter_valid_rows(df)
+
+    general = central_general(df_valid)
+    por_programa = central_por_programa(df_valid)
+
+    with pd.ExcelWriter("reporte_final.xlsx", engine="openpyxl") as writer:
+        df_valid.to_excel(writer, sheet_name="BASE_VALIDA", index=False)
+        general.to_excel(writer, sheet_name="GENERAL", index=False)
+        por_programa.to_excel(writer, sheet_name="X_PROGRAMA", index=False)
+
+    print("[OK] reporte_final.xlsx generado correctamente.")
+
+
+if __name__ == "__main__":
+    main()

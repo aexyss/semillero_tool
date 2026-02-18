@@ -1,0 +1,161 @@
+Semillero Tool – Análisis Automatizado de Pruebas Psicométricas
+
+Herramienta en Python para automatizar el procesamiento inicial de bases de datos psicométricas provenientes de pruebas aplicadas a estudiantes de ingreso.
+
+Permite:
+
+Leer archivos .xlsx o .csv
+
+Normalizar nombres de columnas
+
+Preservar identificadores (IDs intactos)
+
+Filtrar registros inválidos
+
+Calcular medidas de tendencia central:
+
+General
+
+Por programa
+
+Generar reporte estructurado en Excel
+
+Descripción
+
+Esta herramienta automatiza el análisis descriptivo inicial de bases de datos académicas, reduciendo errores manuales y permitiendo que el equipo se concentre en la interpretación de resultados en lugar de tareas operativas.
+
+El flujo del sistema es:
+
+Lectura del archivo.
+
+Detección automática de hoja en Excel.
+
+Normalización de nombres de columnas.
+
+Preservación de columnas de identificación.
+
+Conversión controlada a numérico únicamente de variables del test.
+
+Filtrado de registros inválidos.
+
+Cálculo de medidas de tendencia central.
+
+Exportación de reporte final en Excel.
+
+Estructura del Proyecto
+semillero_tool/
+│
+├── semillero_tool.py
+├── README.md
+└── reporte_final.xlsx  (generado automáticamente)
+
+Requisitos
+
+Python 3.10 o superior.
+
+Dependencias:
+
+pandas
+openpyxl
+unidecode
+
+
+Instalación:
+
+pip install pandas openpyxl unidecode
+
+
+Opcionalmente, se puede usar entorno virtual:
+
+python -m venv venv
+source venv/bin/activate
+pip install pandas openpyxl unidecode
+
+Variables del Test
+
+Las variables analizadas están definidas en la lista:
+
+TEST_COLS
+
+
+Si el instrumento cambia o se amplía, basta con modificar esta lista.
+
+Protección de Identificadores
+
+Las columnas tipo ID nunca se convierten a número.
+
+No se alteran los valores originales.
+
+Se preservan incluso si Excel los interpreta como enteros.
+
+Filtro de Validez
+
+Actualmente se aplican dos criterios:
+
+Mínimo de cinco variables del test respondidas.
+
+Valores dentro de rangos definidos en RANGES.
+
+Estos parámetros pueden ajustarse según el manual técnico del instrumento utilizado.
+
+Uso
+
+Editar la ruta del archivo dentro de la función main():
+
+file_path = "/ruta/a/tu/archivo.xlsx"
+
+
+Ejecutar:
+
+python semillero_tool.py
+
+
+El archivo reporte_final.xlsx se generará en el mismo directorio.
+
+Salida del Reporte
+
+El archivo Excel generado contiene:
+
+BASE_VALIDA
+
+Datos limpios y filtrados.
+
+GENERAL
+
+Media, mediana y N por variable.
+
+X_PROGRAMA
+
+Media, mediana y N por variable dentro de cada programa académico.
+
+Limitaciones Actuales
+
+No realiza análisis inferencial.
+
+No aplica baremos normativos.
+
+No calcula consistencia interna (α de Cronbach).
+
+No detecta outliers avanzados.
+
+No mapea facultades (trabaja únicamente por programa).
+
+Está diseñada para análisis descriptivo inicial.
+
+Posibles Mejoras Futuras
+
+Detección automática de hoja basada en presencia de variables del test.
+
+Inclusión automática de desviación estándar.
+
+Reporte gráfico.
+
+Interfaz CLI para selección de archivo.
+
+Módulos de validación psicométrica.
+
+(todavia tiene errores que ire corrigiendo)
+
+Autor
+
+Cedu
