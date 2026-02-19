@@ -1,0 +1,2 @@
+[console_scripts]
+semillero_tool = semillero_tool.__main__:main

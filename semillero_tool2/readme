@@ -1,0 +1,560 @@
+semillero_tool
+
+Herramienta CLI para limpieza, normalización estructural y auditoría reproducible de datos psicométricos en archivos Excel (.xlsx).
+
+Diseñada para:
+
+Validación estricta de esquema
+
+Canonización determinista de programas académicos
+
+Corrección robusta de IDs (incluye fix automático de .0)
+
+Auditoría de columnas F..U (constructos psicométricos)
+
+Eliminación controlada de filas con datos incompletos
+
+Generación de reportes trazables
+
+Arquitectura modular y determinista
+
+Sin errores silenciosos.
+Fail-fast cuando se solicita modo estricto.
+Sin “magia” implícita.
+
+Instalación (modo editable recomendado)
+cd semillero_tool2
+pip install -e .
+hash -r
+
+
+Verificar:
+
+semillero_tool --version
+
+Uso básico
+
+Modo no destructivo (exploración):
+
+semillero_tool \
+  -i "input.xlsx" \
+  -o "output.xlsx"
+
+
+Este modo:
+
+Normaliza nombres de columnas
+
+Limpia texto
+
+Corrige IDs (incluye eliminación de .0)
+
+Convierte columnas F..U a numérico
+
+Normaliza fechas
+
+Genera reportes
+
+No elimina filas
+No canoniza PROGRAMA
+No valida estrictamente el esquema
+
+Modo estricto (fail-fast)
+semillero_tool \
+  --strict-schema \
+  -i "input.xlsx" \
+  -o "output.xlsx"
+
+
+Activa:
+
+Detección de columnas duplicadas crudas
+
+Validación obligatoria del bloque F..U
+
+Auditoría FU automática
+
+Abortado inmediato ante inconsistencias estructurales
+
+Canonización cerrada de PROGRAMA
+semillero_tool \
+  --canonizar-programa \
+  -i "input.xlsx" \
+  -o "output.xlsx"
+
+
+Genera:
+
+PROGRAMA_BASE (normalización fuerte para auditoría)
+
+PROGRAMA_CANON (label estable)
+
+Motor determinista:
+
+Expansión explícita de abreviaturas (ing, inge, adm, etc.)
+
+Matching por tokens (robusto al orden)
+
+Regex como respaldo
+
+Fuzzy con umbral alto (último recurso)
+
+Decisión metodológica implementada:
+
+Modo cerrado.
+Si no se reconoce → se reporta y se devuelve NA.
+
+No sobreviven categorías ambiguas como:
+
+"administración"
+
+"inge.sistemas"
+
+"Ing. Sistema"
+
+"Ingenieria en sistemas"
+
+Reemplazar columna original:
+
+--reemplazar-programa
+
+
+Requiere:
+
+--canonizar-programa
+
+Corrección determinista de IDs
+
+La herramienta:
+
+Fuerza columnas ID a texto
+
+Elimina .0 cuando proviene de coerción float
+
+Preserva NA reales
+
+Genera reporte auditado (REPORTE_IDS)
+
+Ejemplo:
+
+Input:
+
+1040039503.0 (float)
+
+"1040039503.0" (string)
+
+Output:
+
+"1040039503"
+
+No se permiten alteraciones silenciosas.
+
+Auditoría y Drop de columnas F..U
+
+Solo auditoría:
+
+--fu-validate
+
+
+Drop si TODAS las F..U son NA:
+
+--fu-drop-mode all
+
+
+Drop por umbral mínimo:
+
+Ejemplo: exigir mínimo 16 valores válidos en F..U:
+
+--fu-drop-mode threshold \
+--min-non-missing-fu 16
+
+Drop general por missing
+--drop-missing-mode none | all | any
+
+
+none → no elimina
+all → elimina si todas las columnas críticas están NA
+any → elimina si alguna columna crítica está NA
+
+Columnas críticas por defecto:
+
+PROGRAMA + FU_COLS
+
+Personalizar:
+
+--critical-cols "PROGRAMA,V,E,A"
+
+Ejemplo producción (pipeline completo)
+semillero_tool \
+  --strict-schema \
+  --canonizar-programa \
+  --reemplazar-programa \
+  --fu-drop-mode threshold \
+  --min-non-missing-fu 16 \
+  --drop-missing-mode all \
+  -i "PRUEBAS.xlsx" \
+  -o "PRUEBAS_LIMPIO.xlsx"
+
+Orden real de ejecución (determinista)
+
+Validación de configuración
+
+Lectura Excel
+
+Detección de duplicados crudos (si strict)
+
+Normalización de columnas
+
+Limpieza texto
+
+Corrección IDs (incluye fix .0)
+
+Cast FU a numérico
+
+Canonización PROGRAMA (si flag)
+
+Auditoría FU
+
+Drop FU (si flag)
+
+Drop general (si flag)
+
+Normalización fechas
+
+Escritura + reportes
+
+El orden no depende de azar ni del CLI.
+
+Reportes generados
+
+El Excel de salida contiene hojas:
+
+REPORTE_DUPLICADOS
+
+REPORTE_TEXTO
+
+REPORTE_IDS
+
+REPORTE_PROGRAMA_NO_RECONOCIDOS
+
+REPORTE_FU_CAST
+
+REPORTE_FU_NA_PRE
+
+REPORTE_FU_RESUMEN_PRE
+
+REPORTE_FU_DROPEADAS
+
+REPORTE_FU_NA_POST
+
+REPORTE_FU_RESUMEN_POST
+
+REPORTE_DROP_GENERAL
+
+REPORTE_FECHAS
+
+Cada transformación relevante deja rastro.
+
+Tests mínimos implementados
+
+Incluye:
+
+test_ids.py
+
+test_programa.py
+
+Cobertura mínima garantizada:
+
+IDs:
+
+Float con .0
+
+String con .0
+
+NA preservado
+
+Programa:
+
+inge.sistemas
+
+Ing.Sistemas
+
+Ing. Sistema
+
+Ingenieria en sistemas
+
+Todos → "Ing. Sistemas"
+
+Ejecutar:
+
+pytest -q
+
+
+Si falla, algo rompió determinismo.
+
+Principios de diseño
+
+No comportamiento implícito
+
+No errores silenciosos
+
+Flags controlan acciones destructivas
+
+Validaciones cruzadas obligatorias
+
+Arquitectura modular
+
+Reproducibilidad para investigación académica
+
+Filosofía operativa
+
+Modo normal → exploración
+Modo estricto → control estructural
+Modo estricto + threshold → análisis defendible
+
+Requisitos
+
+Python 3.12+
+pandas
+openpyxl
+unidecode
+pytest (para desarrollo)
+
+Estado del proyecto
+
+✔ Arquitectura modular
+✔ Fail-fast implementado
+✔ Auditoría FU robusta
+✔ Canonización cerrada
+✔ Fix determinista de IDs
+✔ Tests mínimos
+✔ CLI determinista
+
+Siguiente fase recomendada:
+
+REPORTE_RESUMEN consolidado
+
+Logging estructurado
+
+Métricas agregadas de calidad de dataset
+
+Integración con pipeline estadístico (Jamovi / R)
+
+
+Justificación Metodológica
+1. Problema
+
+Los datos psicométricos recolectados en contextos educativos y clínicos suelen presentar:
+
+Inconsistencias en nombres de columnas
+
+Errores tipográficos en variables categóricas
+
+Valores no numéricos en escalas cuantitativas
+
+Ausencia parcial de respuestas en baterías de test
+
+Ambigüedad estructural en el esquema del archivo
+
+Estas inconsistencias afectan:
+
+Validez del análisis estadístico
+
+Reproducibilidad del procesamiento
+
+Trazabilidad metodológica
+
+Comparabilidad entre cohortes
+
+En psicometría, el preprocesamiento no es una etapa trivial. Es parte del control de calidad del instrumento.
+
+2. Principio de Determinismo
+
+La herramienta está diseñada bajo el principio de:
+
+“Toda transformación debe ser explícita, reproducible y trazable.”
+
+Por ello:
+
+No existen transformaciones implícitas.
+
+Las acciones destructivas requieren flags explícitos.
+
+Toda decisión genera un reporte verificable.
+
+Las ambigüedades generan excepción, no suposiciones.
+
+Esto reduce el riesgo de sesgos introducidos por limpieza informal.
+
+3. Validación de Esquema (Schema Validation)
+
+En modo estricto (--strict-schema), la herramienta:
+
+Detecta columnas duplicadas antes de normalizar.
+
+Exige la existencia completa del bloque F..U.
+
+Falla inmediatamente ante inconsistencias estructurales.
+
+Este enfoque sigue principios de:
+
+Data integrity enforcement
+
+Fail-fast design
+
+Control estructural previo al análisis inferencial
+
+Desde una perspectiva psicométrica, esto protege la coherencia del constructo medido.
+
+4. Auditoría de Columnas F..U
+
+El bloque F..U representa dimensiones psicométricas cuantitativas.
+
+La herramienta permite:
+
+Conversión explícita a numérico (con reporte de coerciones).
+
+Cálculo de NA por dimensión.
+
+Identificación de casos completos vs incompletos.
+
+Aplicación de umbral mínimo de completitud.
+
+El uso de --fu-drop-mode threshold permite definir criterios explícitos de calidad de respuesta, por ejemplo:
+
+Conservar solo participantes con al menos 16 dimensiones válidas.
+
+Esto evita decisiones arbitrarias en la exclusión de casos.
+
+5. Canonización de Variables Categóricas
+
+Variables como PROGRAMA pueden introducir ruido analítico por:
+
+Variaciones ortográficas
+
+Abreviaciones inconsistentes
+
+Errores tipográficos
+
+La canonización:
+
+Reduce dimensionalidad artificial
+
+Evita fragmentación de categorías
+
+Mejora consistencia en análisis comparativos
+
+Desde el punto de vista estadístico, esto previene sesgos en análisis por grupo.
+
+6. Separación entre Exploración y Producción
+
+La herramienta distingue entre:
+
+Modo exploratorio (default):
+
+Limpieza mínima
+
+Reportes descriptivos
+
+Sin eliminación automática
+
+Modo producción (flags activados):
+
+Validación estricta
+
+Eliminación controlada
+
+Reglas explícitas de exclusión
+
+Esto respeta el principio de:
+
+No confundir inspección preliminar con depuración definitiva.
+
+7. Trazabilidad
+
+Cada ejecución genera hojas de reporte que documentan:
+
+Conversión de tipos
+
+Valores fuera de rango
+
+NA por dimensión
+
+Filas eliminadas
+
+Cambios categóricos
+
+Esto permite:
+
+Auditoría posterior
+
+Reproducibilidad
+
+Transparencia metodológica
+
+Integración en anexos de investigación
+
+8. Relevancia Psicométrica
+
+En psicometría, la calidad del dato antecede a:
+
+Confiabilidad (α, ω)
+
+Validez factorial
+
+Modelos IRT
+
+Análisis estructural
+
+Un procesamiento no controlado puede alterar:
+
+Distribuciones
+
+Varianzas
+
+Matrices de correlación
+
+Supuestos de normalidad
+
+Por ello, el preprocesamiento debe ser:
+
+Sistemático
+
+Explícito
+
+Parametrizable
+
+Documentado
+
+semillero_tool formaliza esa etapa.
+
+9. Alcance y Limitaciones
+
+La herramienta:
+
+✔ Garantiza consistencia estructural
+✔ Permite reglas explícitas de exclusión
+✔ Genera reportes reproducibles
+
+No:
+
+✘ Reemplaza análisis psicométrico avanzado
+✘ Evalúa calidad teórica del constructo
+✘ Corrige sesgos de instrumento
+
+Es una herramienta de control estructural y limpieza reproducible.
+
+10. Conclusión
+
+El objetivo no es “limpiar Excel”.
+
+El objetivo es:
+
+Proteger la validez del análisis.
+
+Reducir arbitrariedad en decisiones de exclusión.
+
+Formalizar el preprocesamiento como etapa metodológica.
+
+En investigación psicométrica, eso no es opcional.
+Es parte del rigor científico.

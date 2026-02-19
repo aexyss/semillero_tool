@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: semillero_tool2
+Version: 0.3.0
+Summary: Limpieza y normalización de datos psicométricos (Semillero).
+Requires-Python: >=3.10
+Requires-Dist: pandas
+Requires-Dist: openpyxl
+Requires-Dist: unidecode
